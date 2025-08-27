@@ -1,0 +1,17 @@
+openai:
+   api_url: your_api_url
+   api_key: secret
+   model_name: QwQ-32B
+
+redis:
+   host: localhost
+   port: 6379
+   db: 0
+   password: my_password
+   encoding: utf-8
+# ------------------------------------------------------------------------------------------------ #
+#                                             Database                                             #
+# ------------------------------------------------------------------------------------------------ #
+database:
+  mongo_uri: "mongodb://localhost:27017/"
+  db_name: "userData"
