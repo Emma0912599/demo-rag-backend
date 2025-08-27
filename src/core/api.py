@@ -1,17 +1,19 @@
 """API 路由"""
-
-from fastapi import APIRouter, Depends, Request
+import logging
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 
 from src.cache import Cache
 from src.llm import LLMClient
 from src.response import ApiResponse
 from src.schema import Message
+from src.core.user import UserProfile, save_user_profile
 
 from .chat import ChatService, RAGService
 from .dto import ChatRequest
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def get_qwq_client() -> LLMClient:
@@ -33,6 +35,19 @@ QWQ_LLM_DEP = Depends(get_qwq_client)
 @router.get("/")
 async def index():
     return RedirectResponse(url="/docs")
+
+
+@router.post("/users", response_model=dict)
+async def create_user(user_profile: UserProfile):
+    """
+    接收前端发送的用户信息，验证后存入数据库
+    """
+    try:
+        user_id = save_user_profile(user_profile)
+        return {"status": "success", "user_id": str(user_id)}
+    except Exception as e:
+        logger.error(f"Error saving user profile: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/v1/chat/completions")

@@ -94,3 +94,16 @@ class BaseConfig(BaseModel):
         """
         data = cls.from_yaml_dict(path)
         return cls(**data)
+
+
+class DatabaseConfig(BaseConfig):
+    """数据库连接配置"""
+    mongo_uri: str
+    db_name: str
+
+    # 指定在 config.yaml 中查找的节名
+    yaml_section: ClassVar[str] = "database"
+
+
+# 创建一个全局的配置实例，方便其他模块直接导入使用
+db_config = DatabaseConfig.from_yaml()
