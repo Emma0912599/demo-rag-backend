@@ -1,0 +1,80 @@
+[build-system]
+requires = [
+	"setuptools>=69",
+	"wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demo-rag-backend"
+version = "0.1.0"
+description = "A minimal RAG backend playground (LLM + schema + API skeleton)"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["RAG", "LLM", "backend", "FastAPI", "OpenAI"]
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3 :: Only",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Typing :: Typed",
+]
+dependencies = [
+	# Core runtime deps
+	"openai>=1.30.0",
+	"requests>=2.31.0",
+	"loguru>=0.7.2",
+	"pydantic>=2.6.0",
+	"fastapi>=0.112.0",
+	"uvicorn>=0.30.0",
+	"PyYAML>=6.0",
+	"aioredis>=2.0.1",
+    "pymongo", 
+]
+
+[project.optional-dependencies]
+dev = [
+	"black>=24.4.0",
+	"ruff>=0.4.0",
+	"pytest>=8.2.0",
+	"pytest-asyncio>=0.23.0",
+	"pre-commit>=3.6.0",
+]
+
+[project.urls]
+homepage = "https://example.com/demo-rag-backend"
+repository = "https://example.com/demo-rag-backend"
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {"" = "src"}
+py-modules = ["llm", "cache"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["core*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "PLC", "PLE", "PLW"]
+ignore = [
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q"
+testpaths = ["tests"]
+asyncio_mode = "auto"
