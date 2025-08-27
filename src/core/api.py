@@ -26,8 +26,6 @@ def get_cache(request: Request) -> Cache:
         raise RuntimeError("Cache is not configured on app.state.cache")
     return cache
 
-
-# Avoid calling Depends(...) inside default args (ruff B008)
 CACHE_DEP = Depends(get_cache)
 QWQ_LLM_DEP = Depends(get_qwq_client)
 
@@ -37,17 +35,17 @@ async def index():
     return RedirectResponse(url="/docs")
 
 
-@router.post("/users", response_model=dict)
+@router.post("/users", response_model=ApiResponse)
 async def create_user(user_profile: UserProfile):
     """
     接收前端发送的用户信息，验证后存入数据库
     """
     try:
         user_id = save_user_profile(user_profile)
-        return {"status": "success", "user_id": str(user_id)}
+        return ApiResponse.success(data={"user_id": str(user_id)})
     except Exception as e:
         logger.error(f"Error saving user profile: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return ApiResponse.fail(msg=str(e))
 
 
 @router.post("/v1/chat/completions")

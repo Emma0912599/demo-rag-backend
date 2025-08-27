@@ -11,17 +11,11 @@ from src.database import get_users_collection
 class UserProfile(BaseModel):
     """用户个人资料数据模型，用于验证和处理前端发送的用户信息"""
 
-    name: Optional[str] = None
-    gender: Optional[str] = None
+    name: str = "test"
     birthday: Optional[date] = None
-    city: Optional[str] = None
-    identity: Optional[str] = None
-    careTopics: List[str] = Field(default_factory=list)
-    interestTopics: List[str] = Field(default_factory=list)
-
-    class Config:
-        # 允许在 FastAPI 响应中直接使用此模型
-        from_attributes = True
+    occupation: Optional[str] = None
+    hobby: List[str] = Field(default_factory=list)
+    self_description: Optional[str] = None
 
 
 def save_user_profile(user_profile: UserProfile) -> str:
@@ -44,10 +38,8 @@ def save_user_profile(user_profile: UserProfile) -> str:
 
     collection = get_users_collection()
 
-    # 使用 exclude_unset=True 来实现增量更新，只更新请求中明确提供的字段
     user_data = user_profile.model_dump(exclude_unset=True, mode="json")
 
-    # 使用 update_one 和 upsert=True 来实现“更新或插入”
     result = collection.update_one(
         {"name": user_profile.name},
         {"$set": user_data},
@@ -55,16 +47,13 @@ def save_user_profile(user_profile: UserProfile) -> str:
     )
 
     if result.upserted_id:
-        # 如果是新插入的文档，直接返回新 ID
         return str(result.upserted_id)
     else:
-        # 如果是更新的现有文档，需要查询以获取其 ID
         updated_document = collection.find_one(
             {"name": user_profile.name},
-            {"_id": 1}  # 只需要返回 _id 字段
+            {"_id": 1}  
         )
         if updated_document:
             return str(updated_document["_id"])
         else:
-            # 理论上这个分支不会被执行，但作为保险
             raise RuntimeError(f"Failed to find user '{user_profile.name}' after update.")

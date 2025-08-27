@@ -1,56 +1,65 @@
-"""FastAPI 应用入口"""
-
-from contextlib import asynccontextmanager
-import logging
+import os
+import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.config import (
+    app_config,
+    cors_config,
+    init_logging,
+)
 from src.core.api import router as api_router
-from src.cache import LocalCache, RedisCache
-from src.config import BaseConfig
 
-logger = logging.getLogger(__name__)
+# Initialize logging
+init_logging()
 
-
-class RedisConfig(BaseConfig):
-    yaml_section = "redis"
-    host: str = "localhost"
-    port: int = 6379
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    try:
-        config = RedisConfig.from_yaml()
-        app.state.cache = RedisCache(config=config)
-    except Exception as e:
-        logger.warning(f"Failed to initialize RedisCache: {e}, falling back to LocalCache")
-        app.state.cache = LocalCache()
-    try:
-        yield
-    finally:
-        if hasattr(app.state, "cache"):
-            await app.state.cache.close()
-
-
-app = FastAPI(title="demo-rag-backend", lifespan=lifespan)
-
-# 配置 CORS 中间件
-origins = [
-    "http://localhost:8080", 
-    "http://127.0.0.1:8080", 
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+app = FastAPI(
+    title=app_config.name,
+    version=app_config.version,
+    root_path=app_config.root_path,
 )
 
+# === 调试修改 ===
+
+# # Add CORS middleware
+# if not cors_config.origins:
+#     raise RuntimeError(
+#         "CORS origins are not configured. "
+#         "Please check if `config.yaml` is present and the `cors.origins` section is correct."
+#     )
+#
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=[str(origin) for origin in cors_config.origins],
+#     allow_credentials=True,
+#     allow_methods=cors_config.methods,
+#     allow_headers=cors_config.headers,
+# )
+
+# 直接使用写死的（Hardcoded）配置来代替
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.include_router(api_router)
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application startup")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Application shutdown")
 if __name__ == "__main__":
     import uvicorn
 

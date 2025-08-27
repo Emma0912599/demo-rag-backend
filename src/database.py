@@ -1,28 +1,34 @@
 """数据库连接和操作模块"""
 
+from typing import ClassVar
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
+from src.config import BaseConfig
 
-# 直接从 config 模块导入配置实例
-from src.config import db_config
 
-_client: MongoClient | None = None
-_db: Database | None = None
+class DatabaseConfig(BaseConfig):
+    """数据库连接配置"""
+    mongo_uri: str
+    db_name: str
+    yaml_section: ClassVar[str] = "database"
 
+# 创建一个全局的数据库配置实例
+db_config = DatabaseConfig.from_yaml()
+
+# 创建一个全局的 MongoClient 实例，以便在整个应用中复用
+client = MongoClient(db_config.mongo_uri)
 
 def get_db() -> Database:
-    """获取数据库实例，如果不存在则创建新的连接"""
-    global _client, _db
-    if _db is None:
-        if not db_config.mongo_uri or not db_config.db_name:
-            raise ValueError("MongoDB URI and DB name must be set in config.yaml")
-        _client = MongoClient(db_config.mongo_uri)
-        _db = _client[db_config.db_name]
-    return _db
+    """获取数据库实例"""
+    return client[db_config.db_name]
 
-
-def get_users_collection() -> Collection:
-    """获取用于存储用户信息的 'users' 集合"""
+def get_users_collection():
+    """获取用户集合"""
     db = get_db()
-    return db["users"]
+    return db.users
+
+def get_chat_history_collection():
+    """获取聊天记录集合"""
+    db = get_db()
+    return db.chat_history

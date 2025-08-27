@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, List
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, AnyHttpUrl
 
 try:
-    from loguru import logger  # type: ignore
-except Exception:  # pragma: no cover
-    logger = None  # type: ignore
+    from loguru import logger
+except ImportError:
+    logger = None
 
 
 class BaseConfig(BaseModel):
@@ -27,7 +27,6 @@ class BaseConfig(BaseModel):
     - YAML 解析错误将抛出异常。
     """
 
-    # subclass can override this attribute to specify the YAML section name
     yaml_section: ClassVar[str | None] = None
 
     @classmethod
@@ -48,7 +47,7 @@ class BaseConfig(BaseModel):
     def _filter_model_fields(cls, data: Mapping[str, Any] | None) -> dict:
         if not isinstance(data, Mapping):
             return {}
-        allowed = set(getattr(cls, "model_fields", {}).keys())  # pydantic v2
+        allowed = set(getattr(cls, "model_fields", {}).keys())
 
         if not allowed:
             return dict(data)
@@ -57,13 +56,6 @@ class BaseConfig(BaseModel):
 
     @classmethod
     def from_yaml_dict(cls, path: str | None = None) -> dict:
-        """从 YAML 文件加载并提取仅与当前模型字段匹配的字典。
-
-        - 若文件缺失返回 `{}`；
-        - 若存在以类名推断的节（去掉 "Config" 后缀并小写），优先读取该节；
-        - 否则读取顶层平铺字段；
-        - 仅返回与当前模型字段同名的键值对。
-        """
         cfg_path = Path(path) if path else cls._default_config_path()
 
         try:
@@ -85,25 +77,46 @@ class BaseConfig(BaseModel):
         return cls._filter_model_fields(raw)
 
     @classmethod
-    def from_yaml(cls, path: str | None = None) -> BaseConfig:
-        """从 YAML 文件加载并实例化当前配置模型。
-
-        返回当前配置模型的实例；当文件缺失或字段缺失时，按照 Pydantic 模型校验规则处理。
-        如模型包含必填字段而 YAML 未提供，将抛出校验异常。
-        若需要字典形式，请使用 `from_yaml_dict`。
-        """
+    def from_yaml(cls, path: str | None = None) -> "BaseConfig":
         data = cls.from_yaml_dict(path)
         return cls(**data)
 
 
-class DatabaseConfig(BaseConfig):
-    """数据库连接配置"""
-    mongo_uri: str
-    db_name: str
+class AppConfig(BaseConfig):
+    """应用配置"""
+    name: str = "FastAPI App"
+    version: str = "0.1.0"
+    root_path: str = ""
+    yaml_section: ClassVar[str] = "app"
 
-    # 指定在 config.yaml 中查找的节名
-    yaml_section: ClassVar[str] = "database"
+class CORSConfig(BaseConfig):
+    """CORS 配置"""
+    origins: List[AnyHttpUrl] = []
+    methods: List[str] = ["*"]
+    headers: List[str] = ["*"]
+    yaml_section: ClassVar[str] = "cors"
 
+class LoggingConfig(BaseConfig):
+    """日志配置"""
+    level: str = "INFO"
+    rotation: str = "10 MB"
+    retention: str = "7 days"
+    yaml_section: ClassVar[str] = "logging"
 
-# 创建一个全局的配置实例，方便其他模块直接导入使用
-db_config = DatabaseConfig.from_yaml()
+def init_logging():
+    """初始化日志记录器"""
+    if logger:
+        log_config = LoggingConfig.from_yaml()
+        logger.add(
+            "logs/app.log",
+            level=log_config.level.upper(),
+            rotation=log_config.rotation,
+            retention=log_config.retention,
+            enqueue=True,
+            backtrace=True,
+            diagnose=True,
+        )
+
+# 创建全局配置实例
+app_config = AppConfig.from_yaml()
+cors_config = CORSConfig.from_yaml()
